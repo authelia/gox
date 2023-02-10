@@ -33,6 +33,7 @@ func TestGoVersion(t *testing.T) {
 		"go1.17",
 		"go1.18",
 		"go1.19",
+		"go1.20",
 	}
 	found := false
 	for _, expected := range acceptable {
