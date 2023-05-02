@@ -118,33 +118,51 @@ func GoCrossCompile(opts *CompileOpts) error {
 	}
 
 	args := []string{"build"}
+
 	if opts.Rebuild {
 		args = append(args, "-a")
 	}
+
 	if opts.TrimPath {
 		args = append(args, "-trimpath")
 	}
+
 	if opts.ModMode != "" {
 		args = append(args, "-mod", opts.ModMode)
 	}
+
 	if opts.Buildmode != "" {
 		args = append(args, "-buildmode", opts.Buildmode)
 	}
+
 	if opts.BuildVCS != "" {
 		args = append(args, "-buildvcs", opts.BuildVCS)
 	}
+
 	if opts.Race {
 		args = append(args, "-race")
 	}
-	args = append(args,
-		"-gcflags", opts.Gcflags,
-		"-ldflags", opts.Ldflags,
-		"-asmflags", opts.Asmflags,
-		"-tags", opts.Tags,
-		"-o", outputPathReal,
-		opts.PackagePath)
+
+	if opts.Gcflags != "" {
+		args = append(args, "-gcflags", opts.Gcflags)
+	}
+
+	if opts.Ldflags != "" {
+		args = append(args, "-ldflags", opts.Ldflags)
+	}
+
+	if opts.Asmflags != "" {
+		args = append(args, "-asmflags", opts.Asmflags)
+	}
+
+	if opts.Tags != "" {
+		args = append(args, "-tags", opts.Tags)
+	}
+
+	args = append(args, "-o", outputPathReal, opts.PackagePath)
 
 	_, err = execGo(opts.GoCmd, env, chdir, args...)
+
 	return err
 }
 
