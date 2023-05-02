@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -19,39 +20,64 @@ func main() {
 }
 
 func realMain() int {
-	var buildToolchain bool
-	var ldflags string
-	var outputTpl string
-	var parallel int
-	var platformFlag PlatformFlag
-	var tags string
-	var verbose bool
-	var flagGcflags, flagAsmflags, flagBuildmode, flagBuildVCS string
-	var flagCgo, flagRebuild, flagTrimPath, flagListOSArch, flagRaceFlag bool
-	var flagGoCmd string
-	var modMode string
+	var (
+		flagBuildToolchain, flagVerbose, flagCgo, flagTrimPath, flagListOSArch bool
+		flagGoCmd, flagLDFlags, flagTags                                       string
+		flagOutput                                                             string
+		flagParallel                                                           int
+		flagPlatform                                                           PlatformFlag
+
+		flagChangeDir, flagCoverPkg, flagASMFlags, flagBuildMode, flagBuildVCS, flagCompiler, flagGcCGOFlags, flagGcFlags string
+		flagInstallSuffix, flagMod, flagModFile, flagOverlay, flagProfileGuidedOptimization, flagPackageDir               string
+		flagRebuild, flagRace, flagMSAN, flagASAN, flagCover, flagLinkShared, flagModCacheRW                              bool
+	)
+
 	flags := flag.NewFlagSet("gox", flag.ExitOnError)
+
 	flags.Usage = func() { printUsage() }
-	flags.Var(platformFlag.ArchFlagValue(), "arch", "arch to build for or skip")
-	flags.Var(platformFlag.OSArchFlagValue(), "osarch", "os/arch pairs to build for or skip")
-	flags.Var(platformFlag.OSFlagValue(), "os", "os to build for or skip")
-	flags.StringVar(&ldflags, "ldflags", "", "linker flags")
-	flags.StringVar(&tags, "tags", "", "go build tags")
-	flags.StringVar(&outputTpl, "output", "{{.Dir}}_{{.OS}}_{{.Arch}}", "output path")
-	flags.IntVar(&parallel, "parallel", -1, "parallelization factor")
-	flags.BoolVar(&buildToolchain, "build-toolchain", false, "build toolchain")
-	flags.BoolVar(&verbose, "verbose", false, "verbose")
-	flags.BoolVar(&flagCgo, "cgo", false, "")
-	flags.BoolVar(&flagRebuild, "rebuild", false, "")
-	flags.BoolVar(&flagTrimPath, "trimpath", false, "")
+
+	// Gox Flags.
 	flags.BoolVar(&flagListOSArch, "osarch-list", false, "")
-	flags.BoolVar(&flagRaceFlag, "race", false, "")
-	flags.StringVar(&flagBuildmode, "buildmode", "", "")
-	flags.StringVar(&flagBuildVCS, "buildvcs", "", "")
-	flags.StringVar(&flagGcflags, "gcflags", "", "")
-	flags.StringVar(&flagAsmflags, "asmflags", "", "")
+	flags.StringVar(&flagOutput, "output", "{{.Dir}}_{{.OS}}_{{.Arch}}", "")
+	flags.IntVar(&flagParallel, "parallel", -1, "")
+	flags.BoolVar(&flagVerbose, "verbose", false, "")
 	flags.StringVar(&flagGoCmd, "gocmd", "go", "")
-	flags.StringVar(&modMode, "mod", "", "")
+
+	// Misc.
+	flags.Var(flagPlatform.ArchFlagValue(), "arch", "")
+	flags.BoolVar(&flagBuildToolchain, "build-toolchain", false, "")
+	flags.Var(flagPlatform.OSFlagValue(), "os", "")
+	flags.Var(flagPlatform.OSArchFlagValue(), "osarch", "")
+
+	// Env Flags.
+	flags.BoolVar(&flagCgo, "cgo", false, "")
+
+	// Build Flags.
+	flags.StringVar(&flagChangeDir, "change-dir", "", "")
+	flags.BoolVar(&flagRebuild, "rebuild", false, "")
+	flags.BoolVar(&flagRace, flagNameRace, false, "")
+	flags.BoolVar(&flagMSAN, flagNameMSAN, false, "")
+	flags.BoolVar(&flagASAN, flagNameASAN, false, "")
+	flags.BoolVar(&flagCover, flagNameCover, false, "")
+	flags.StringVar(&flagCoverPkg, flagNameCoverPKG, "", "")
+	flags.StringVar(&flagASMFlags, flagNameASMFlags, "", "")
+	flags.StringVar(&flagBuildMode, flagNameBuildMode, "", "")
+	flags.StringVar(&flagBuildVCS, flagNameBuildVCS, "", "")
+	flags.StringVar(&flagCompiler, flagNameCompiler, "", "")
+	flags.StringVar(&flagGcCGOFlags, flagNameGcCGOFlags, "", "")
+	flags.StringVar(&flagGcFlags, flagNameGcFlags, "", "")
+	flags.StringVar(&flagInstallSuffix, flagNameInstallSuffix, "", "")
+	flags.StringVar(&flagLDFlags, flagNameLDFlags, "", "")
+	flags.BoolVar(&flagLinkShared, flagNameLinkShared, false, "")
+	flags.StringVar(&flagMod, flagNameMod, "", "")
+	flags.BoolVar(&flagModCacheRW, flagNameModCacheRW, false, "")
+	flags.StringVar(&flagModFile, flagNameModFile, "", "")
+	flags.StringVar(&flagOverlay, flagNameOverlay, "", "")
+	flags.StringVar(&flagProfileGuidedOptimization, flagNameProfileGuidedOptimization, "", "")
+	flags.StringVar(&flagPackageDir, flagNamePackageDir, "", "")
+	flags.StringVar(&flagTags, flagNameTags, "", "")
+	flags.BoolVar(&flagTrimPath, flagNameTrimPath, false, "")
+
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		flags.Usage()
 		return 1
@@ -59,31 +85,21 @@ func realMain() int {
 
 	// Determine what amount of parallelism we want Default to the current
 	// number of CPUs-1 is <= 0 is specified.
-	if parallel <= 0 {
+	if flagParallel <= 0 {
 		cpus := runtime.NumCPU()
 		if cpus < 2 {
-			parallel = 1
+			flagParallel = 1
 		} else {
-			parallel = cpus - 1
+			flagParallel = cpus - 1
 		}
 
 		// Joyent containers report 48 cores via runtime.NumCPU(), and a
 		// default of 47 parallel builds causes a panic. Default to 3 on
 		// Solaris-derived operating systems unless overridden with the
 		// -parallel flag.
-		if runtime.GOOS == "solaris" {
-			parallel = 3
+		if runtime.GOOS == goosSolaris {
+			flagParallel = 3
 		}
-	}
-
-	if buildToolchain {
-		return mainBuildToolchain(parallel, platformFlag, verbose)
-	}
-
-	if _, err := exec.LookPath(flagGoCmd); err != nil {
-		fmt.Fprintf(os.Stderr, "%s executable must be on the PATH\n",
-			flagGoCmd)
-		return 1
 	}
 
 	versionStr, err := GoVersion()
@@ -92,8 +108,27 @@ func realMain() int {
 		return 1
 	}
 
+	var v *version.Version
+
+	// Use latest if we get an unexpected version string
+	if strings.HasPrefix(versionStr, "go") {
+		if v, err = version.NewVersion(versionStr[2:]); err != nil {
+			log.Printf("Unable to parse current go version: %s\n%s", versionStr, err.Error())
+		}
+	}
+
+	if flagBuildToolchain {
+		return mainBuildToolchain(v, flagParallel, flagPlatform, flagVerbose)
+	}
+
+	if _, err := exec.LookPath(flagGoCmd); err != nil {
+		fmt.Fprintf(os.Stderr, "%s executable must be on the PATH\n",
+			flagGoCmd)
+		return 1
+	}
+
 	if flagListOSArch {
-		return mainListOSArch(versionStr)
+		return mainListOSArch(v)
 	}
 
 	// Determine the packages that we want to compile. Default to the
@@ -111,7 +146,7 @@ func realMain() int {
 	}
 
 	// Determine the platforms we're building for
-	platforms := platformFlag.Platforms(SupportedPlatforms(versionStr))
+	platforms := flagPlatform.Platforms(SupportedPlatforms(v))
 	if len(platforms) == 0 {
 		fmt.Println("No valid platforms to build for. If you specified a value")
 		fmt.Println("for the 'os', 'arch', or 'osarch' flags, make sure you're")
@@ -120,31 +155,29 @@ func realMain() int {
 	}
 
 	// Assume -mod is supported when no version prefix is found
-	if modMode != "" && strings.HasPrefix(versionStr, "go") {
-		// go-version only cares about version numbers
-		current, err := version.NewVersion(versionStr[2:])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to parse current go version: %s\n%s", versionStr, err.Error())
-			return 1
-		}
-
+	if flagMod != "" {
 		constraint, err := version.NewConstraint(">= 1.11")
 		if err != nil {
 			panic(err)
 		}
 
-		if !constraint.Check(current) {
+		if !constraint.Check(v) {
 			fmt.Printf("Go compiler version %s does not support the -mod flag\n", versionStr)
-			modMode = ""
+			flagMod = ""
 		}
 	}
 
 	// Build in parallel!
-	fmt.Printf("Number of parallel builds: %d\n\n", parallel)
-	var errorLock sync.Mutex
-	var wg sync.WaitGroup
+	fmt.Printf("Number of parallel builds: %d\n\n", flagParallel)
+
+	var (
+		errorLock sync.Mutex
+		wg        sync.WaitGroup
+	)
+
 	errors := make([]string, 0)
-	semaphore := make(chan int, parallel)
+	semaphore := make(chan int, flagParallel)
+
 	for _, platform := range platforms {
 		for _, path := range mainDirs {
 			// Start the goroutine that will do the actual build
@@ -155,28 +188,44 @@ func realMain() int {
 				fmt.Printf("--> %15s: %s\n", platform.String(), path)
 
 				opts := &CompileOpts{
+					GoVersion:   v,
 					PackagePath: path,
 					Platform:    platform,
-					OutputTpl:   outputTpl,
-					Ldflags:     ldflags,
-					Gcflags:     flagGcflags,
-					Asmflags:    flagAsmflags,
-					Tags:        tags,
-					ModMode:     modMode,
+					OutputTpl:   flagOutput,
 					Cgo:         flagCgo,
-					Rebuild:     flagRebuild,
-					Buildmode:   flagBuildmode,
-					BuildVCS:    flagBuildVCS,
-					TrimPath:    flagTrimPath,
 					GoCmd:       flagGoCmd,
-					Race:        flagRaceFlag,
+
+					ChangeDir:                 flagChangeDir,
+					Rebuild:                   flagRebuild,
+					Race:                      flagRace,
+					MemorySanitizer:           flagMSAN,
+					AddressSanitizer:          flagASAN,
+					Cover:                     flagCover,
+					CoverPackage:              flagCoverPkg,
+					ASMFlags:                  flagASMFlags,
+					BuildMode:                 flagBuildMode,
+					BuildVCS:                  flagBuildVCS,
+					Compiler:                  flagCompiler,
+					GcCGOFlags:                flagGcCGOFlags,
+					GcFlags:                   flagGcFlags,
+					InstallSuffix:             flagInstallSuffix,
+					LDFlags:                   flagLDFlags,
+					LinkShared:                flagLinkShared,
+					ModMode:                   flagMod,
+					ModCacheRW:                flagModCacheRW,
+					ModFile:                   flagModFile,
+					Overlay:                   flagOverlay,
+					ProfileGuidedOptimization: flagProfileGuidedOptimization,
+					PackageDir:                flagPackageDir,
+					Tags:                      flagTags,
+					TrimPath:                  flagTrimPath,
 				}
 
 				// Determine if we have specific CFLAGS or LDFLAGS for this
 				// GOOS/GOARCH combo and override the defaults if so.
-				envOverride(&opts.Ldflags, platform, "LDFLAGS")
-				envOverride(&opts.Gcflags, platform, "GCFLAGS")
-				envOverride(&opts.Asmflags, platform, "ASMFLAGS")
+				envOverride(&opts.LDFlags, platform, "LDFLAGS")
+				envOverride(&opts.GcFlags, platform, "GCFLAGS")
+				envOverride(&opts.ASMFlags, platform, "ASMFLAGS")
 				envOverride(&opts.Cc, platform, "CC")
 				envOverride(&opts.Cxx, platform, "CXX")
 
@@ -221,22 +270,38 @@ Options:
   -arch=""            Space-separated list of architectures to build for
   -build-toolchain    Build cross-compilation toolchain
   -cgo                Sets CGO_ENABLED=1, requires proper C toolchain (advanced)
-  -gcflags=""         Additional '-gcflags' value to pass to go build
-  -ldflags=""         Additional '-ldflags' value to pass to go build
-  -asmflags=""        Additional '-asmflags' value to pass to go build
-  -tags=""            Additional '-tags' value to pass to go build
-  -mod=""             Additional '-mod' value to pass to go build
-  -buildmode=""       Additional '-buildmode' value to pass to go build
   -os=""              Space-separated list of operating systems to build for
   -osarch=""          Space-separated list of os/arch pairs to build for
   -osarch-list        List supported os/arch pairs for your Go version
   -output="foo"       Output path template. See below for more info
   -parallel=-1        Amount of parallelism, defaults to number of CPUs
-  -race               Build with the go race detector enabled, requires CGO
   -gocmd="go"         Build command, defaults to Go
-  -rebuild            Force rebuilding of package that were up to date
-  -trimpath           Remove all file system paths from the resulting executable
   -verbose            Verbose mode
+
+  -change-dir=""      Passed to go build flag '-C'. Change to dir before running the command
+  -rebuild            Passed to go build flag '-a'. Force rebuilding of package that were up to date
+  -race               Passed to go build flag '-race'. Build with the go race detector enabled, requires CGO
+  -msan               Passed to go build flag '-msan'. Enable interoperation with memory sanitizer
+  -asan               Passed to go build flag '-asan'. Enable interoperation with address sanitizer
+  -cover              Passed to go build flag '-cover'. Enable code coverage instrumentation
+  -coverpkg=""        Passed to go build flag '-coverpkg'. Apply coverage analysis to each package matching the patterns
+  -asmflags=""        Passed to go build flag '-asmflags'.
+  -buildmode=""       Passed to go build flag '-buildmode'.
+  -buildvcs=""        Passed to go build flag '-buildvcs'.
+  -compiler=""        Passed to go build flag '-compiler'.
+  -gccgoflags=""      Passed to go build flag '-gccgoflags'.
+  -gcflags=""         Passed to go build flag '-gcflags'.
+  -installsuffix=""   Passed to go build flag '-installsuffix'.
+  -ldflags=""         Passed to go build flag '-ldflags'.
+  -linkshared         Passed to go build flag '-linkshared'.
+  -mod=""             Passed to go build flag '-mod'.
+  -modcacherw         Passed to go build flag '-modcacherw'.
+  -modfile=""         Passed to go build flag '-modfile'.
+  -overlay=""         Passed to go build flag '-overlay'.
+  -pgo=""             Passed to go build flag '-pgo'.
+  -pkgdir=""          Passed to go build flag '-pkgdir'.
+  -tags=""            Passed to go build flag '-tags'.
+  -trimpath           Passed to go build flag '-trimpath'. Remove all file system paths from the resulting executable
 
 Output path template:
 

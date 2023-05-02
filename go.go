@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -18,26 +17,6 @@ type OutputTemplateData struct {
 	Dir  string
 	OS   string
 	Arch string
-}
-
-type CompileOpts struct {
-	PackagePath string
-	Platform    Platform
-	OutputTpl   string
-	Ldflags     string
-	Gcflags     string
-	Cc          string
-	Cxx         string
-	Asmflags    string
-	Tags        string
-	ModMode     string
-	Buildmode   string
-	BuildVCS    string
-	Cgo         bool
-	Rebuild     bool
-	TrimPath    bool
-	GoCmd       string
-	Race        bool
 }
 
 // GoCrossCompile
@@ -72,16 +51,18 @@ func GoCrossCompile(opts *CompileOpts) error {
 	if err != nil {
 		return err
 	}
+
 	tplData := OutputTemplateData{
 		Dir:  filepath.Base(opts.PackagePath),
 		OS:   opts.Platform.OS,
 		Arch: opts.Platform.Arch,
 	}
+
 	if err := tpl.Execute(&outputPath, &tplData); err != nil {
 		return err
 	}
 
-	if opts.Platform.OS == "windows" {
+	if opts.Platform.OS == goosWindows {
 		outputPath.WriteString(".exe")
 	}
 
@@ -98,7 +79,7 @@ func GoCrossCompile(opts *CompileOpts) error {
 	// directory to build.
 	chdir := ""
 	if opts.PackagePath[0] == '_' {
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == goosWindows {
 			// We have to replace weird paths like this:
 			//
 			//   _/c_/Users
@@ -128,35 +109,43 @@ func GoCrossCompile(opts *CompileOpts) error {
 	}
 
 	if opts.ModMode != "" {
-		args = append(args, "-mod", opts.ModMode)
+		args = append(args, fmtFlag("mod", opts.ModMode))
 	}
 
-	if opts.Buildmode != "" {
-		args = append(args, "-buildmode", opts.Buildmode)
+	if opts.BuildMode != "" {
+		args = append(args, fmtFlag("buildmode", opts.BuildMode))
 	}
 
 	if opts.BuildVCS != "" {
-		args = append(args, "-buildvcs", opts.BuildVCS)
+		args = append(args, fmtFlag("buildvcs", opts.BuildVCS))
+	}
+
+	if opts.Compiler != "" {
+		args = append(args, fmtFlag("-compiler", opts.Compiler))
 	}
 
 	if opts.Race {
 		args = append(args, "-race")
 	}
 
-	if opts.Gcflags != "" {
-		args = append(args, "-gcflags", opts.Gcflags)
+	if opts.GcFlags != "" {
+		args = append(args, fmtFlagSpaceSeparated("gcflags", opts.GcFlags))
 	}
 
-	if opts.Ldflags != "" {
-		args = append(args, "-ldflags", opts.Ldflags)
+	if opts.GcCGOFlags != "" {
+		args = append(args, fmtFlagSpaceSeparated("gccgoflags", opts.GcCGOFlags))
 	}
 
-	if opts.Asmflags != "" {
-		args = append(args, "-asmflags", opts.Asmflags)
+	if opts.LDFlags != "" {
+		args = append(args, fmtFlagSpaceSeparated("ldflags", opts.LDFlags))
+	}
+
+	if opts.ASMFlags != "" {
+		args = append(args, fmtFlagSpaceSeparated("asmflags", opts.ASMFlags))
 	}
 
 	if opts.Tags != "" {
-		args = append(args, "-tags", opts.Tags)
+		args = append(args, fmt.Sprintf("-tags=%s", opts.Tags))
 	}
 
 	args = append(args, "-o", outputPathReal, opts.PackagePath)
@@ -164,6 +153,18 @@ func GoCrossCompile(opts *CompileOpts) error {
 	_, err = execGo(opts.GoCmd, env, chdir, args...)
 
 	return err
+}
+
+func fmtFlag(name, value string) string {
+	return fmt.Sprintf(`-%s=%s`, name, value)
+}
+
+func fmtFlagSpaceSeparated(name, value string) string {
+	if strings.Contains(value, " ") && value[0] != '"' {
+		return fmt.Sprintf(`-%s="%s"`, name, value)
+	}
+
+	return fmt.Sprintf(`-%s=%s`, name, value)
 }
 
 // GoMainDirs returns the file paths to the packages that are "main"
@@ -217,7 +218,7 @@ func GoVersion() (string, error) {
 	// of `go version` might change whereas the source is guaranteed to run
 	// for some time thanks to Go's compatibility guarantee.
 
-	td, err := ioutil.TempDir("", "gox")
+	td, err := os.MkdirTemp("", "gox")
 	if err != nil {
 		return "", err
 	}
@@ -225,7 +226,7 @@ func GoVersion() (string, error) {
 
 	// Write the source code for the program that will generate the version
 	sourcePath := filepath.Join(td, "version.go")
-	if err := ioutil.WriteFile(sourcePath, []byte(versionSource), 0644); err != nil {
+	if err := os.WriteFile(sourcePath, []byte(versionSource), 0644); err != nil {
 		return "", err
 	}
 
@@ -252,6 +253,7 @@ func GoVersionParts() (result [2]int, err error) {
 func execGo(GoCmd string, env []string, dir string, args ...string) (string, error) {
 	var stderr, stdout bytes.Buffer
 	cmd := exec.Command(GoCmd, args...)
+
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if env != nil {

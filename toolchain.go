@@ -10,11 +10,12 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/hashicorp/go-version"
 	"github.com/mitchellh/iochan"
 )
 
 // The "main" method for when the toolchain build is requested.
-func mainBuildToolchain(parallel int, platformFlag PlatformFlag, verbose bool) int {
+func mainBuildToolchain(v *version.Version, parallel int, platformFlag PlatformFlag, verbose bool) int {
 	if _, err := exec.LookPath("go"); err != nil {
 		fmt.Fprintf(os.Stderr, "You must have Go already built for your native platform\n")
 		fmt.Fprintf(os.Stderr, "and the `go` binary on the PATH to build toolchains.\n")
@@ -35,12 +36,6 @@ func mainBuildToolchain(parallel int, platformFlag PlatformFlag, verbose bool) i
 		return 1
 	}
 
-	version, err := GoVersion()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading Go version: %s", err)
-		return 1
-	}
-
 	root, err := GoRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error finding GOROOT: %s\n", err)
@@ -53,7 +48,7 @@ func mainBuildToolchain(parallel int, platformFlag PlatformFlag, verbose bool) i
 	}
 
 	// Determine the platforms we're building the toolchain for.
-	platforms := platformFlag.Platforms(SupportedPlatforms(version))
+	platforms := platformFlag.Platforms(SupportedPlatforms(v))
 
 	// The toolchain build can't be parallelized.
 	if parallel > 1 {
@@ -98,7 +93,7 @@ func buildToolchain(wg *sync.WaitGroup, semaphore chan int, root string, platfor
 	fmt.Printf("--> Toolchain: %s\n", platform.String())
 
 	scriptName := "make.bash"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == goosWindows {
 		scriptName = "make.bat"
 	}
 

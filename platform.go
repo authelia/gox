@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"strings"
 
 	"github.com/hashicorp/go-version"
 )
@@ -57,129 +55,129 @@ func addDrop(base []Platform, add []Platform, drop []Platform) []Platform {
 
 var (
 	Platforms_1_0 = []Platform{
-		{"darwin", "386", true},
-		{"darwin", "amd64", true},
-		{"linux", "386", true},
-		{"linux", "amd64", true},
-		{"linux", "arm", true},
-		{"freebsd", "386", true},
-		{"freebsd", "amd64", true},
-		{"openbsd", "386", true},
-		{"openbsd", "amd64", true},
-		{"windows", "386", true},
-		{"windows", "amd64", true},
+		{goosDarwin, goarch386, true},
+		{goosDarwin, goarchAMD64, true},
+		{goosLinux, goarch386, true},
+		{goosLinux, goarchAMD64, true},
+		{goosLinux, goarchARM, true},
+		{goosFreeBSD, goarch386, true},
+		{goosFreeBSD, goarchAMD64, true},
+		{goosOpenBSD, goarch386, true},
+		{goosOpenBSD, goarchAMD64, true},
+		{goosWindows, goarch386, true},
+		{goosWindows, goarchAMD64, true},
 	}
 
 	Platforms_1_1 = addDrop(Platforms_1_0, []Platform{
-		{"freebsd", "arm", true},
-		{"netbsd", "386", true},
-		{"netbsd", "amd64", true},
-		{"netbsd", "arm", true},
-		{"plan9", "386", false},
+		{goosFreeBSD, goarchARM, true},
+		{goosNetBSD, goarch386, true},
+		{goosNetBSD, goarchAMD64, true},
+		{goosNetBSD, goarchARM, true},
+		{goosPlan9, goarch386, false},
 	}, nil)
 
 	Platforms_1_3 = addDrop(Platforms_1_1, []Platform{
-		{"dragonfly", "386", false},
-		{"dragonfly", "amd64", false},
-		{"nacl", "amd64", false},
-		{"nacl", "amd64p32", false},
-		{"nacl", "arm", false},
-		{"solaris", "amd64", false},
+		{goosDragonfly, goarch386, false},
+		{goosDragonfly, goarchAMD64, false},
+		{goosNACL, goarchAMD64, false},
+		{goosNACL, goarchAMD64P32, false},
+		{goosNACL, goarchARM, false},
+		{goosSolaris, goarchAMD64, false},
 	}, nil)
 
 	Platforms_1_4 = addDrop(Platforms_1_3, []Platform{
-		{"android", "arm", false},
-		{"plan9", "amd64", false},
+		{goosAndroid, goarchARM, false},
+		{goosPlan9, goarchAMD64, false},
 	}, nil)
 
 	Platforms_1_5 = addDrop(Platforms_1_4, []Platform{
-		{"darwin", "arm", false},
-		{"darwin", "arm64", false},
-		{"linux", "arm64", false},
-		{"linux", "ppc64", false},
-		{"linux", "ppc64le", false},
+		{goosDarwin, goarchARM, false},
+		{goosDarwin, goarchARM64, false},
+		{goosLinux, goarchARM64, false},
+		{goosLinux, gooarchPowerPC64, false},
+		{goosLinux, gooarchPowerPC64LE, false},
 	}, nil)
 
 	Platforms_1_6 = addDrop(Platforms_1_5, []Platform{
-		{"android", "386", false},
-		{"android", "amd64", false},
-		{"linux", "mips64", false},
-		{"linux", "mips64le", false},
-		{"nacl", "386", false},
-		{"openbsd", "arm", true},
+		{goosAndroid, goarch386, false},
+		{goosAndroid, goarchAMD64, false},
+		{goosLinux, goarchMIPS64, false},
+		{goosLinux, goarchMIPS64LE, false},
+		{goosNACL, goarch386, false},
+		{goosOpenBSD, goarchARM, true},
 	}, nil)
 
 	Platforms_1_7 = addDrop(Platforms_1_5, []Platform{
 		// While not fully supported s390x is generally useful
-		{"linux", "s390x", true},
-		{"plan9", "arm", false},
+		{goosLinux, goarchS390X, true},
+		{goosPlan9, goarchARM, false},
 		// Add the 1.6 Platforms, but reflect full support for mips64 and mips64le
-		{"android", "386", false},
-		{"android", "amd64", false},
-		{"linux", "mips64", true},
-		{"linux", "mips64le", true},
-		{"nacl", "386", false},
-		{"openbsd", "arm", true},
+		{goosAndroid, goarch386, false},
+		{goosAndroid, goarchAMD64, false},
+		{goosLinux, goarchMIPS64, true},
+		{goosLinux, goarchMIPS64LE, true},
+		{goosNACL, goarch386, false},
+		{goosOpenBSD, goarchARM, true},
 	}, nil)
 
 	Platforms_1_8 = addDrop(Platforms_1_7, []Platform{
-		{"linux", "mips", true},
-		{"linux", "mipsle", true},
+		{goosLinux, gooarchMIPS, true},
+		{goosLinux, gooarchMIPSLE, true},
 	}, nil)
 
 	// no new platforms in 1.9
 	Platforms_1_9 = Platforms_1_8
 
 	// unannounced, but dropped support for android/amd64
-	Platforms_1_10 = addDrop(Platforms_1_9, nil, []Platform{{"android", "amd64", false}})
+	Platforms_1_10 = addDrop(Platforms_1_9, nil, []Platform{{goosAndroid, goarchAMD64, false}})
 
 	Platforms_1_11 = addDrop(Platforms_1_10, []Platform{
-		{"js", "wasm", true},
+		{goosJavaScript, gooarchWebAssembly, true},
 	}, nil)
 
 	Platforms_1_12 = addDrop(Platforms_1_11, []Platform{
-		{"aix", "ppc64", false},
-		{"windows", "arm", true},
+		{goosAIX, gooarchPowerPC64, false},
+		{goosWindows, goarchARM, true},
 	}, nil)
 
 	Platforms_1_13 = addDrop(Platforms_1_12, []Platform{
-		{"illumos", "amd64", false},
-		{"netbsd", "arm64", true},
-		{"openbsd", "arm64", true},
+		{goosIllumos, goarchAMD64, false},
+		{goosNetBSD, goarchARM64, true},
+		{goosOpenBSD, goarchARM64, true},
 	}, nil)
 
 	Platforms_1_14 = addDrop(Platforms_1_13, []Platform{
-		{"freebsd", "arm64", true},
-		{"linux", "riscv64", true},
+		{goosFreeBSD, goarchARM64, true},
+		{goosLinux, gooarchRISCV64, true},
 	}, []Platform{
 		// drop nacl
-		{"nacl", "386", false},
-		{"nacl", "amd64", false},
-		{"nacl", "arm", false},
+		{goosNACL, goarch386, false},
+		{goosNACL, goarchAMD64, false},
+		{goosNACL, goarchARM, false},
 	})
 
 	Platforms_1_15 = addDrop(Platforms_1_14, []Platform{
-		{"android", "arm64", false},
+		{goosAndroid, goarchARM64, false},
 	}, []Platform{
 		// drop i386 macos
-		{"darwin", "386", false},
+		{goosDarwin, goarch386, false},
 	})
 
 	Platforms_1_16 = addDrop(Platforms_1_15, []Platform{
-		{"android", "amd64", false},
-		{"darwin", "arm64", true},
-		{"openbsd", "mips64", false},
+		{goosAndroid, goarchAMD64, false},
+		{goosDarwin, goarchARM64, true},
+		{goosOpenBSD, goarchMIPS64, false},
 	}, nil)
 
 	Platforms_1_17 = addDrop(Platforms_1_16, []Platform{
-		{"windows", "arm64", true},
+		{goosWindows, goarchARM64, true},
 	}, nil)
 
 	// no new platforms in 1.18
 	Platforms_1_18 = Platforms_1_17
 
 	Platforms_1_19 = addDrop(Platforms_1_18, []Platform{
-		{"linux", "loong64", true},
+		{goosLinux, gooarchLoong64, true},
 	}, nil)
 
 	Platforms_1_20 = Platforms_1_19
@@ -193,25 +191,33 @@ var (
 
 // SupportedPlatforms returns the full list of supported platforms for
 // the version of Go that is
-func SupportedPlatforms(v string) []Platform {
-	// Use latest if we get an unexpected version string
-	if !strings.HasPrefix(v, "go") {
-		return PlatformsLatest
-	}
-	// go-version only cares about version numbers
-	v = v[2:]
-
-	current, err := version.NewVersion(v)
-	if err != nil {
-		log.Printf("Unable to parse current go version: %s\n%s", v, err.Error())
-
-		// Default to latest
+func SupportedPlatforms(v *version.Version) []Platform {
+	if v == nil {
 		return PlatformsLatest
 	}
 
-	var platforms = []struct {
+	for _, p := range platformConstraints {
+		if p.Constraints.Check(v) {
+			return p.Platforms
+		}
+	}
+
+	// Assume latest
+	return PlatformsLatest
+}
+
+// A PlatformConstraint describes a constraint for a list of platforms.
+type PlatformConstraint struct {
+	Constraints version.Constraints
+	Platforms   []Platform
+}
+
+var platformConstraints []PlatformConstraint
+
+func init() {
+	inputs := []struct {
 		constraint string
-		plat       []Platform
+		platforms  []Platform
 	}{
 		{"<= 1.0", Platforms_1_0},
 		{">= 1.1, < 1.3", Platforms_1_1},
@@ -237,16 +243,18 @@ func SupportedPlatforms(v string) []Platform {
 		{">= 1.22, < 1.23", Platforms_1_22},
 	}
 
-	for _, p := range platforms {
-		constraints, err := version.NewConstraint(p.constraint)
-		if err != nil {
+	platformConstraints = make([]PlatformConstraint, len(inputs))
+
+	var (
+		constraint version.Constraints
+		err        error
+	)
+
+	for i, input := range inputs {
+		if constraint, err = version.NewConstraint(input.constraint); err != nil {
 			panic(err)
 		}
-		if constraints.Check(current) {
-			return p.plat
-		}
-	}
 
-	// Assume latest
-	return PlatformsLatest
+		platformConstraints[i] = PlatformConstraint{Constraints: constraint, Platforms: input.platforms}
+	}
 }

@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/hashicorp/go-version"
 )
 
-func mainListOSArch(version string) int {
+func mainListOSArch(version *version.Version) int {
 	fmt.Printf(
 		"Supported OS/Arch combinations for %s are shown below. The \"default\"\n"+
 			"boolean means that if you don't specify an OS/Arch, it will be\n"+
