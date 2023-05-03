@@ -1,10 +1,11 @@
-//go:build go1.16
-// +build go1.16
+//go:build !go1.16
+// +build !go1.16
 
 package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -17,7 +18,7 @@ func GoVersion() (string, error) {
 	// of `go version` might change whereas the source is guaranteed to run
 	// for some time thanks to Go's compatibility guarantee.
 
-	td, err := os.MkdirTemp("", "gox")
+	td, err := ioutil.TempDir("", "gox")
 	if err != nil {
 		return "", err
 	}
@@ -25,7 +26,7 @@ func GoVersion() (string, error) {
 
 	// Write the source code for the program that will generate the version
 	sourcePath := filepath.Join(td, "version.go")
-	if err := os.WriteFile(sourcePath, []byte(versionSource), 0644); err != nil {
+	if err := ioutil.WriteFile(sourcePath, []byte(versionSource), 0644); err != nil {
 		return "", err
 	}
 
