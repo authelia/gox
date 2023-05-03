@@ -21,29 +21,11 @@ type OutputTemplateData struct {
 
 // GoCrossCompile
 func GoCrossCompile(opts *CompileOpts) error {
-	env := append(os.Environ(),
-		"GOOS="+opts.Platform.OS,
-		"GOARCH="+opts.Platform.Arch)
-
-	if opts.Cc != "" {
-		env = append(env, "CC="+opts.Cc)
-	}
-	if opts.Cxx != "" {
-		env = append(env, "CXX="+opts.Cxx)
-	}
-
 	// If we're building for our own platform, then enable cgo always. We
 	// respect the CGO_ENABLED flag if that is explicitly set on the platform.
 	if !opts.Cgo && os.Getenv("CGO_ENABLED") != "0" {
 		opts.Cgo = runtime.GOOS == opts.Platform.OS &&
 			runtime.GOARCH == opts.Platform.Arch
-	}
-
-	// If cgo is enabled then set that env var
-	if opts.Cgo {
-		env = append(env, "CGO_ENABLED=1")
-	} else {
-		env = append(env, "CGO_ENABLED=0")
 	}
 
 	var outputPath bytes.Buffer
@@ -98,73 +80,13 @@ func GoCrossCompile(opts *CompileOpts) error {
 		opts.PackagePath = ""
 	}
 
-	args := []string{"build"}
-
-	if opts.Rebuild {
-		args = append(args, "-a")
-	}
-
-	if opts.TrimPath {
-		args = append(args, "-trimpath")
-	}
-
-	if opts.ModMode != "" {
-		args = append(args, fmtFlag("mod", opts.ModMode))
-	}
-
-	if opts.BuildMode != "" {
-		args = append(args, fmtFlag("buildmode", opts.BuildMode))
-	}
-
-	if opts.BuildVCS != "" {
-		args = append(args, fmtFlag("buildvcs", opts.BuildVCS))
-	}
-
-	if opts.Compiler != "" {
-		args = append(args, fmtFlag("-compiler", opts.Compiler))
-	}
-
-	if opts.Race {
-		args = append(args, "-race")
-	}
-
-	if opts.GcFlags != "" {
-		args = append(args, fmtFlagSpaceSeparated("gcflags", opts.GcFlags))
-	}
-
-	if opts.GcCGOFlags != "" {
-		args = append(args, fmtFlagSpaceSeparated("gccgoflags", opts.GcCGOFlags))
-	}
-
-	if opts.LDFlags != "" {
-		args = append(args, fmtFlagSpaceSeparated("ldflags", opts.LDFlags))
-	}
-
-	if opts.ASMFlags != "" {
-		args = append(args, fmtFlagSpaceSeparated("asmflags", opts.ASMFlags))
-	}
-
-	if opts.Tags != "" {
-		args = append(args, fmt.Sprintf("-tags=%s", opts.Tags))
-	}
+	args := append([]string{"build"}, opts.Arguments()...)
 
 	args = append(args, "-o", outputPathReal, opts.PackagePath)
 
-	_, err = execGo(opts.GoCmd, env, chdir, args...)
+	_, err = execGo(opts.GoCmd, opts.Env(), chdir, args...)
 
 	return err
-}
-
-func fmtFlag(name, value string) string {
-	return fmt.Sprintf(`-%s=%s`, name, value)
-}
-
-func fmtFlagSpaceSeparated(name, value string) string {
-	if strings.Contains(value, " ") && value[0] != '"' {
-		return fmt.Sprintf(`-%s="%s"`, name, value)
-	}
-
-	return fmt.Sprintf(`-%s=%s`, name, value)
 }
 
 // GoMainDirs returns the file paths to the packages that are "main"
@@ -202,7 +124,7 @@ func GoMainDirs(packages []string, GoCmd string) ([]string, error) {
 
 // GoRoot returns the GOROOT value for the compiled `go` binary.
 func GoRoot() (string, error) {
-	output, err := execGo("go", nil, "", "env", "GOROOT")
+	output, err := execGo(gobin, nil, "", "env", "GOROOT")
 	if err != nil {
 		return "", err
 	}
@@ -231,7 +153,7 @@ func GoVersion() (string, error) {
 	}
 
 	// Execute and read the version, which will be the only thing on stdout.
-	version, err := execGo("go", nil, "", "run", sourcePath)
+	version, err := execGo(gobin, nil, "", "run", sourcePath)
 
 	fmt.Printf("Detected Go Version: %s\n", version)
 

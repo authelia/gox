@@ -41,7 +41,7 @@ func realMain() int {
 	flags.StringVar(&flagOutput, "output", "{{.Dir}}_{{.OS}}_{{.Arch}}", "")
 	flags.IntVar(&flagParallel, "parallel", -1, "")
 	flags.BoolVar(&flagVerbose, "verbose", false, "")
-	flags.StringVar(&flagGoCmd, "gocmd", "go", "")
+	flags.StringVar(&flagGoCmd, "gocmd", gobin, "")
 
 	// Misc.
 	flags.Var(flagPlatform.ArchFlagValue(), "arch", "")
@@ -111,7 +111,7 @@ func realMain() int {
 	var v *version.Version
 
 	// Use latest if we get an unexpected version string
-	if strings.HasPrefix(versionStr, "go") {
+	if strings.HasPrefix(versionStr, gobin) {
 		if v, err = version.NewVersion(versionStr[2:]); err != nil {
 			log.Printf("Unable to parse current go version: %s\n%s", versionStr, err.Error())
 		}
@@ -152,19 +152,6 @@ func realMain() int {
 		fmt.Println("for the 'os', 'arch', or 'osarch' flags, make sure you're")
 		fmt.Println("using a valid value.")
 		return 1
-	}
-
-	// Assume -mod is supported when no version prefix is found
-	if flagMod != "" {
-		constraint, err := version.NewConstraint(">= 1.11")
-		if err != nil {
-			panic(err)
-		}
-
-		if !constraint.Check(v) {
-			fmt.Printf("Go compiler version %s does not support the -mod flag\n", versionStr)
-			flagMod = ""
-		}
 	}
 
 	// Build in parallel!
@@ -211,7 +198,7 @@ func realMain() int {
 					InstallSuffix:             flagInstallSuffix,
 					LDFlags:                   flagLDFlags,
 					LinkShared:                flagLinkShared,
-					ModMode:                   flagMod,
+					Mod:                       flagMod,
 					ModCacheRW:                flagModCacheRW,
 					ModFile:                   flagModFile,
 					Overlay:                   flagOverlay,

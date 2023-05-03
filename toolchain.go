@@ -16,7 +16,7 @@ import (
 
 // The "main" method for when the toolchain build is requested.
 func mainBuildToolchain(v *version.Version, parallel int, platformFlag PlatformFlag, verbose bool) int {
-	if _, err := exec.LookPath("go"); err != nil {
+	if _, err := exec.LookPath(gobin); err != nil {
 		fmt.Fprintf(os.Stderr, "You must have Go already built for your native platform\n")
 		fmt.Fprintf(os.Stderr, "and the `go` binary on the PATH to build toolchains.\n")
 		return 1

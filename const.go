@@ -1,6 +1,10 @@
 package main
 
 const (
+	gobin = "go"
+)
+
+const (
 	flagNameRace                      = "race"
 	flagNameMSAN                      = "msan"
 	flagNameASAN                      = "asan"
