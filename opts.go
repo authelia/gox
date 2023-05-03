@@ -147,7 +147,7 @@ func (f *BuildArgFlags) AddStrings(v *version.Version, name, value string) {
 		return
 	}
 
-	f.args = append(f.args, fmt.Sprintf(`-%s="%s"`, name, value))
+	f.args = append(f.args, "-"+name, value)
 }
 
 func (f *BuildArgFlags) AddString(v *version.Version, name, value string) {
