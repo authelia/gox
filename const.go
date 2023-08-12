@@ -29,6 +29,7 @@ const (
 	flagNameTrimPath                  = "trimpath"
 )
 
+// Go Operating System values for GOOS.
 const (
 	goosWindows    = "windows"
 	goosLinux      = "linux"
@@ -46,6 +47,7 @@ const (
 	goosIllumos    = "illumos"
 )
 
+// Go Architecture values for GOARCH.
 const (
 	goarch386          = "386"
 	goarchAMD64        = "amd64"
