@@ -2,9 +2,11 @@ package main
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/go-version"
+	"github.com/stretchr/testify/assert"
 )
 
 func MustParseVersion(in string) *version.Version {
@@ -163,5 +165,44 @@ func TestMIPS(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("Expected to find linux/mips64/true in go1.7 supported platforms")
+	}
+}
+
+func TestPlatformsGoOutput(t *testing.T) {
+	var versions []string
+
+	for v, _ := range goToolDistListOutput {
+		versions = append(versions, v)
+	}
+
+	sort.Slice(versions, func(i, j int) bool {
+		return version.Must(version.NewSemver(versions[i])).LessThan(version.Must(version.NewSemver(versions[j])))
+	})
+
+	for _, v := range versions {
+		platforms := SupportedPlatforms(version.Must(version.NewVersion(v)))
+
+		t.Run(v, func(t *testing.T) {
+			platformsOutput, ok := goToolDistListOutput[v]
+
+			if !ok {
+				return
+			}
+
+			var platformList []string
+
+			t.Run("ShouldNotContainPlatformsAbsentFromOutput", func(t *testing.T) {
+				for _, platform := range platforms {
+					platformList = append(platformList, platform.String())
+					assert.Contains(t, platformsOutput, platform.String())
+				}
+			})
+
+			t.Run("ShouldContainAllPlatformsFromOutput", func(t *testing.T) {
+				for _, platform := range platformsOutput {
+					assert.Contains(t, platformList, platform)
+				}
+			})
+		})
 	}
 }

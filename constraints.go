@@ -57,7 +57,8 @@ func init() {
 		platforms  []Platform
 	}{
 		{"<= 1.0", Platforms_1_0},
-		{">= 1.1, < 1.3", Platforms_1_1},
+		{">= 1.1, < 1.2", Platforms_1_1},
+		{">= 1.2, < 1.3", Platforms_1_2},
 		{">= 1.3, < 1.4", Platforms_1_3},
 		{">= 1.4, < 1.5", Platforms_1_4},
 		{">= 1.5, < 1.6", Platforms_1_5},
@@ -76,6 +77,7 @@ func init() {
 		{">= 1.18, < 1.19", Platforms_1_18},
 		{">= 1.19, < 1.20", Platforms_1_19},
 		{">= 1.20, < 1.21", Platforms_1_20},
+		{">= 1.21, < 1.22", Platforms_1_21},
 	}
 
 	platformConstraints = make([]PlatformConstraint, len(platformConstraintsInputs))
