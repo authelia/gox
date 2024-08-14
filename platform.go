@@ -131,7 +131,9 @@ var (
 	Platforms_1_9 = Platforms_1_8
 
 	// unannounced, but dropped support for android/amd64
-	Platforms_1_10 = addDrop(Platforms_1_9, nil, []Platform{{"android", "amd64", false}})
+	Platforms_1_10 = addDrop(Platforms_1_9, nil, []Platform{
+		{"android", "amd64", false},
+	})
 
 	Platforms_1_11 = addDrop(Platforms_1_10, []Platform{
 		{"js", "wasm", true},
@@ -186,9 +188,15 @@ var (
 
 	Platforms_1_21 = Platforms_1_20
 
-	Platforms_1_22 = Platforms_1_21
+	Platforms_1_22 = addDrop(Platforms_1_21, []Platform{
+		{"openbsd", "riscv64", false},
+	}, nil)
 
-	PlatformsLatest = Platforms_1_22
+	Platforms_1_23 = addDrop(Platforms_1_22, []Platform{
+		{"openbsd", "ppc64", false},
+	}, nil)
+
+	PlatformsLatest = Platforms_1_23
 )
 
 // SupportedPlatforms returns the full list of supported platforms for
@@ -235,6 +243,7 @@ func SupportedPlatforms(v string) []Platform {
 		{">= 1.20, < 1.21", Platforms_1_20},
 		{">= 1.21, < 1.22", Platforms_1_21},
 		{">= 1.22, < 1.23", Platforms_1_22},
+		{">= 1.23, < 1.24", Platforms_1_23},
 	}
 
 	for _, p := range platforms {
