@@ -34,7 +34,12 @@ func TestGoVersion(t *testing.T) {
 		"go1.18",
 		"go1.19",
 		"go1.20",
+		"go1.21",
+		"go1.22",
+		"go1.23",
+		"go1.24",
 	}
+
 	found := false
 	for _, expected := range acceptable {
 		if strings.HasPrefix(v, expected) {
